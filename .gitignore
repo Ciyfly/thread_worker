@@ -1,0 +1,3 @@
+build/
+dist/
+thread_worker.egg-info/
