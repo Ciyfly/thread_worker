@@ -1,22 +1,10 @@
-<!--
- * @Date: 2021-06-24 17:51:10
- * @LastEditors: recar
- * @LastEditTime: 2021-06-24 18:09:17
--->
-# thread_work
-多线程队列消费work 含有优先级的work 有限流的work
-
-## work
-`Worker` 普通多线程work  
-`WorkerPrior` 优先消费队列work  
-`LimitWork` 限流work  
-
-## 使用
-
-举例 限流的work  
-默认一个线程1s发一条 创建三个线程1s发三条  
-
-```python
+#!/usr/bin/python
+# coding=utf-8
+'''
+Date: 2021-06-24 18:04:37
+LastEditors: recar
+LastEditTime: 2021-06-24 18:04:38
+'''
 from thread_work import LimitWork
 import requests
 def create_work():
@@ -37,4 +25,3 @@ def run():
     print("end")
 
 run()
-```
