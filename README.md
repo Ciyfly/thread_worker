@@ -1,9 +1,9 @@
 <!--
  * @Date: 2021-06-24 17:51:10
  * @LastEditors: recar
- * @LastEditTime: 2021-06-24 18:53:52
+ * @LastEditTime: 2021-06-24 19:17:27
 -->
-# thread_work
+# thread_worker
 多线程队列消费work 含有优先级的work 有限流的work
 
 ## work
