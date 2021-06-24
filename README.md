@@ -1,7 +1,7 @@
 <!--
  * @Date: 2021-06-24 17:51:10
  * @LastEditors: recar
- * @LastEditTime: 2021-06-24 18:09:17
+ * @LastEditTime: 2021-06-24 18:53:52
 -->
 # thread_work
 多线程队列消费work 含有优先级的work 有限流的work
@@ -17,7 +17,7 @@
 默认一个线程1s发一条 创建三个线程1s发三条  
 
 ```python
-from thread_work import LimitWork
+from thread_worker import LimitWork
 import requests
 def create_work():
     work = LimitWork(consumer_count=3)
