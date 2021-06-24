@@ -3,9 +3,9 @@
 '''
 Date: 2021-06-24 18:04:37
 LastEditors: recar
-LastEditTime: 2021-06-24 18:04:38
+LastEditTime: 2021-06-24 18:30:51
 '''
-from thread_work import LimitWork
+from thread_worker import LimitWork
 import requests
 def create_work():
     work = LimitWork(consumer_count=3)
