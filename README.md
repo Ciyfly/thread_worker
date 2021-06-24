@@ -16,6 +16,8 @@
 举例 限流的work  
 默认一个线程1s发一条 创建三个线程1s发三条  
 
+`pip install thread-worker`  
+
 ```python
 from thread_worker import LimitWork
 import requests
