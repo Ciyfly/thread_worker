@@ -4,7 +4,7 @@
 Author: Recar
 Date: 2021-06-19 20:10:03
 LastEditors: recar
-LastEditTime: 2021-06-24 18:07:46
+LastEditTime: 2022-02-14 15:38:29
 '''
 
 
@@ -20,7 +20,6 @@ import traceback
 import logging
 from datetime import datetime
 
-logger = logging
 def ctrl_c(signum, frame):
     print()
     print("ctrl c")
@@ -29,13 +28,29 @@ def ctrl_c(signum, frame):
 signal.signal(signal.SIGINT, ctrl_c)
 
 class BaseWork(object):
-    def __init__(self, consumer_count=50):
+    def __init__(self, consumer_func, consumer_count, logger, join, timeout):
+        '''
+        @params consumer_func consumer_func default None
+        @params consumer_count Work quantity
+        @params logger You can customize the logger. The default is logging
+        @params join You can set whether the thread ends when the queue is empty 
+                By default, the thread will end when the queue is empty and the thread task is completed
+                You can set it to true to enable work to monitor tasks all the time
+        @params timeout The timeout for obtaining data in the queue is 5S by default, that is, if the data is not obtained within 5S, it will end
+
+        '''
         self.consumer_count = consumer_count
         self.work_queue = queue.Queue()
+        self.logger = logger
+        self.join = join
+        self.timeout= timeout
+        if consumer_func:
+            self.join = True
+            self.run(consumer_func)
 
     def put(self, item):
         '''
-        @params item 数据
+        @params item data
         '''        
         try:
             if type(item) == list:
@@ -44,67 +59,76 @@ class BaseWork(object):
             else:
                 self.work_queue.put(item)
         except Exception as e:
-            logger.error(traceback.format_exc())
+            self.logger.error(traceback.format_exc())
 
     def producer(self, func):
         pass
 
+    def get_queue_size(self):
+        return self.work_queue.qsize()
+
     def consumer(self, func):
         '''
-        消费者
-        @params func 消费者函数
+        @params func consumer func
         '''
-        while not self.work_queue.empty():
-            item = self.work_queue.get(timeout=3)
-            if item is None:
-                break
+        def _consumer(self):
+            item = self.work_queue.get(timeout=self.timeout)
             func(item)
+        if self.join:
+            while True:
+                try:
+                    _consumer(self)
+                except queue.Empty:
+                    continue
+                except Exception:
+                    self.logger.error("consumer error: {0}".format(traceback.format_exc()))
+        else:
+            while not self.work_queue.empty():
+                try:
+                    _consumer(self)
+                except queue.Empty:
+                    return
+                except Exception:
+                    self.logger.error("consumer error: {0}".format(traceback.format_exc()))                    
 
     def run(self, consumer_func):
         '''
-        运行方法
-        @params consumer_func 消费者函数
+        @params consumer_func 
         '''
-        logger.info("Starting")
-        start_time = time.time()
         threads = []
-        for i in range(self.consumer_count):
+        for _ in range(self.consumer_count):
             t = threading.Thread(target=self.consumer,args=(consumer_func,))
             t.setDaemon(True)
             t.start()
             threads.append(t)
-        while not self.work_queue.empty():
-            logger.debug("queue size: {0}".format(self.work_queue.qsize()))
-            time.sleep(1)
-        alive = True
-        while alive:
-            alive = False
-            for thread in threads:
-                if thread.isAlive():
-                    alive = True
-                    time.sleep(0.1)
-        use_time = time.time() - start_time
-        logger.info("use_time:{0:.2f}s".format(use_time))
-        logger.info("End")
+        if not self.join:
+            alive = True
+            while alive:
+                alive_count = len(threads)
+                for thread in threads:
+                    if not thread.isAlive():
+                        alive_count -=1
+                if alive_count==0:
+                    alive = False
+                    self.logger.info("over")
+                time.sleep(0.1)
 
 class Worker(BaseWork):
-    '''普通消费队列'''
-    def __init__(self, consumer_count=50):
-        super(Worker, self).__init__(consumer_count)
-        logger.debug('Worker')
+    '''Base Work General consumer queue'''
+    def __init__(self, consumer_func=None, consumer_count=10, logger=logging, join=False, timeout=5):
+        super(Worker, self).__init__(consumer_func, consumer_count,logger,join, timeout)
 
-class WorkerPrior(BaseWork):
-    '''优先消费队列'''
-    def __init__(self, consumer_count=50):
-        super(WorkerPrior, self).__init__(consumer_count)
+class PriorWorker(BaseWork):
+    '''Consumption queue with priority'''
+    def __init__(self, consumer_func=None, consumer_count=10,logger=logging, join=False, timeout=5):
+        super(PriorWorker, self).__init__(consumer_func, consumer_count,logger,join, timeout)
         from queue import PriorityQueue
         self.work_queue = PriorityQueue()
-        logger.debug('WorkerPrior')
-
     def put(self, item, priority=1):
         '''
-        @params item 数据
-        @params priority 优先级 默认是1
+        @params item data
+        @params priority default 1
+        The smaller the value, the higher the priority
         '''
         try:
             if type(item) == list:
@@ -113,45 +137,76 @@ class WorkerPrior(BaseWork):
             else:
                 self.work_queue.put((priority, item))
         except Exception as e:
-            logger.error(traceback.format_exc()) 
+            self.logger.error(traceback.format_exc()) 
 
     def consumer(self, func):
         '''
-        消费者
-        @params func 消费者函数
+        @params func 
         '''
-        while not self.work_queue.empty():
-            item = self.work_queue.get(timeout=3)
+        def _consumer(self, func):
+            item = self.work_queue.get(timeout=self.timeout)
             priority, data = item
             if data is None:
-                break
+                return                
             func(data)
+        if self.join:
+            while True:
+                try:
+                    _consumer(self, func)
+                except queue.Empty:
+                    continue
+                except Exception:
+                    self.logger.error("consumer error: {0}".format(traceback.format_exc()))
+        else:
+            while not self.work_queue.empty():
+                try:
+                    _consumer(self, func)
+                except queue.Empty:
+                    return
+                except Exception:
+                    self.logger.error("consumer error: {0}".format(traceback.format_exc()))                    
 
-class LimitWork(BaseWork):
-    '''
-    限流work
-    '''
-    def __init__(self, consumer_count=10):
-        super(LimitWork, self).__init__(consumer_count)
-        logger.debug('LimitWork')
 
-    def consumer(self, func, limit_time=1):
+class LimitWorker(BaseWork):
+    '''
+    queue that can limit flow
+    '''
+    def __init__(self, limit_time=1, consumer_func=None, consumer_count=10,logger=logging, join=False, timeout=5):
         '''
-        消费者
-        @params func 消费者函数
-        @params limit_time 限流的每个work的时间限制 默认1s
+        @params consumer_count Work quantity
+        @params limit_time By setting work_ Count to set work by setting limit_ Time to set the unit time, which controls how many works execute limit together in the unit time_ Time is 1s by default
         '''
-        last_time = None
-        while not self.work_queue.empty():
-            item = self.work_queue.get(timeout=3)
-            if item is None:
-                break
+        super(LimitWorker, self).__init__(consumer_func, consumer_count,logger,join, timeout)
+        self.limit_time = limit_time
+
+    def consumer(self, func):
+        '''
+        @params func 
+        '''
+        def _consumer(self, last_time):
+            item = self.work_queue.get(timeout=self.timeout)
             while True:
                 current_time = datetime.now()
-                if last_time is None or (current_time-last_time).seconds >=limit_time:
-                    print("send: {0}".format(current_time.strftime('%Y-%m-%d %H:%M:%S %f')))
+                if last_time is None or (current_time-last_time).seconds >=self.limit_time:
                     func(item)
                     last_time = current_time
                     break
                 else:
                     continue
+        last_time = None
+        if self.join:
+            while True:
+                try:
+                    _consumer(self, last_time)
+                except queue.Empty:
+                    continue
+                except Exception:
+                    self.logger.error("consumer error: {0}".format(traceback.format_exc()))
+        else:
+            while not self.work_queue.empty():
+                try:
+                    _consumer(self, last_time)
+                except queue.Empty:
+                    return
+                except Exception:
+                    self.logger.error("consumer error: {0}".format(traceback.format_exc()))                    
