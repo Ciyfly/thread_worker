@@ -27,7 +27,7 @@ def read_file(filename):
     return long_description
 
 setup(name='thread_worker',  
-      version='0.1.6',
+      version='0.1.7',
       author='recar',
       author_email='recar@recar.com',
       long_description=read_file('README.md'),
