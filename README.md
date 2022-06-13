@@ -4,6 +4,8 @@
 支持 优先消费队列模式  
 支持 限流work模式  
 
+## 安装
+`pip install thread_worker`
 
 ## work
 `Worker` 普通多线程work  
