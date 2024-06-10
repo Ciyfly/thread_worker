@@ -10,9 +10,10 @@ def consumer(data):
 
 
 # limit_time 是limit_time 秒内有 consumer_count个消费者
-w = LimitWorker(consumer, consumer_count=1, block=False, limit_time=3)
-# w = Worker(consumer, consumer_count=1, block=False)
+# w = LimitWorker(consumer, consumer_count=1, block=False, limit_time=3)
+w = Worker(consumer, consumer_count=1, block=False)
 
+# example for multiple parameters in method
 for iid in range(10):
     w.put({"data": iid, "index": 0})
 # 这里通过 is_end 方法来阻塞程序
