@@ -31,7 +31,7 @@ def read_file(filename):
 
 setup(
     name="thread_worker",
-    version="0.1.9",
+    version="0.1.10",
     author="recar",
     author_email="recar@recar.com",
     long_description=read_file("README.md"),
